@@ -1,0 +1,171 @@
+---
+title: "Reproducible Research Project n. 1"
+output: html_document
+---
+
+```{r, echo=FALSE,results='hide'}
+##Setting language
+Sys.setlocale("LC_TIME", "English")
+```
+The project is an elaboration of data about personal activity. The dataset include variables on:
+
+- <b>steps</b>: Number of steps taking in a 5-minute interval
+- <b>date</b>: The date of the measurements in YYYY-MM-DD format
+- <b>interval</b>: Identifier for the 5-minute interval in which measurement was taken
+
+The dataset is stored in a comma-separated-value (CSV) file and there are a total of 17,568 observations in this dataset.
+
+
+**Loading and preprocessing data**
+
+In the first step, the data were loaded and preprocessed in order to be elaborated in the r programming language.
+
+```{r}
+download.file("http://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip", destfile="./repdata-data-activity.zip")
+unzip("./repdata-data-activity.zip")
+data <- read.csv("activity.csv")
+data$date <- as.character(data$date)
+data$date <- as.Date(data$date, "%Y-%m-%d")
+```
+
+**A glance on the data**
+```{r}
+head(data)
+str(data)
+```
+
+**What is mean total number of steps taken per day?**
+
+The first step has been to calculate the mean and the median number of steps taken per day.
+
+The sum of steps for each day has been calculated and stored in the data frame <b>sumsteps</b>. An histogram of those data has been plotted.
+
+```{r}
+sumsteps <- aggregate(data$steps ~ data$date, FUN="sum", na.rm=T)
+names(sumsteps) <- c("date", "steps")
+head(sumsteps)
+```
+```{r}
+plot(sumsteps$date, sumsteps$steps, type="h", lwd=7, col="blue", main = "Number of steps per day", xlab = "Date", ylab = "Number of steps")
+```
+
+
+The mean of the total steps per day has been calculated and stored in the variable <b>meansumsteps</b>.
+
+```{r}
+meansumsteps <- mean(sumsteps$steps, na.rm=T)
+meansumsteps
+```
+The median of the total steps per day has been calculated and store in the variable <b>mediansumsteps</b>.
+```{r}
+mediansumsteps <- median(sumsteps$steps, na.rm=T)
+mediansumsteps
+```
+
+There is little difference between the mean and the median. 
+
+**What is the average daily activity pattern?**
+
+The next step has been to calculate the mean for each 5-minute interval of activity and to identify the interval that contains the maximum number of steps. 
+
+The mean for each 5-minute interval has been calculated and stored in the data frame <b>intervalmean</b>.  
+
+```{r}
+intervalmean <- aggregate(data$steps ~ data$interval, FUN="mean", na.rm=T)
+names(intervalmean) <- c("interval", "steps")
+head(intervalmean)
+```
+ 
+The mean for each 5-minute interval has then been plotted
+```{r}
+plot(intervalmean$interval, intervalmean$steps, type="l", lwd=3, col="blue", main = "Daily steps, mean per 5-minutes interval", xlab = "Interval", ylab="Number of steps")  
+```
+  
+The maximum average mean of steps is 206.1698 in the interval 835. 
+```{r}
+intervalmean[intervalmean$steps == max(intervalmean$steps),]
+```
+
+**Imputing missing values**
+
+A second data frame, <b>data1</b>, has been created in order to impute missing values. Each NA has been substituted with the mean of the corresponding interval.
+```{r}
+data1 <- data
+for (i in 1:17568)
+  {
+		if (is.na(data1$steps[i])==T)
+			{
+				data1$steps[i] <- intervalmean$steps[intervalmean$interval == data$interval[i]]
+			}
+	}
+head(data)
+head(intervalmean)
+head(data1)
+```
+
+The total steps per day has been recalculated and stored in the data frame <b>sumsteps1</b>. The new data have been plotted.
+```{r}
+sumsteps1 <- aggregate(data1$steps ~ data1$date, FUN="sum", na.rm=T)
+names(sumsteps1) <- c("date", "steps")
+head(sumsteps1)
+```
+
+
+```{r}
+plot(sumsteps1$date, sumsteps1$steps, type="h", lwd=7, col="blue", main = "Number of steps per day", xlab = "Date", ylab = "Number of steps")
+```
+  
+The mean and the median of the total steps per day have been recalculated with the new data and compared with the old data.
+```{r}
+meansumsteps1 <- mean(sumsteps1$steps, na.rm=T)
+mediansumsteps1 <- median(sumsteps1$steps, na.rm=T)
+```
+
+
+The <i>old</i> mean of the total steps per day is 
+```{r, echo=FALSE}
+meansumsteps
+```
+
+
+The <i>new</i> mean is
+```{r, echo=FALSE}
+meansumsteps1
+```
+
+
+The <i>old</i> median of the total steps per day is
+```{r, echo=FALSE}
+mediansumsteps
+```
+
+
+The <i>new</i> median is
+```{r, echo=FALSE}
+mediansumsteps1
+```
+
+
+The means are the same, meanwhile the new median is higher and is equal to the mean
+
+**Are there differences in activity patterns between weekdays and weekends?**
+
+
+The dates of the measurements have been divided in two categories, weekday and weekend. For each category has been plotted the number of steps per each 5-minute interval.
+
+
+```{r}
+days <- rep(" ", 17568)
+for (i in 1:17568)
+      {
+            if (weekdays(data1$date[i]) == "Saturday" | weekdays(data1$date[1]) == "Sunday") 
+              {days[i]="weekend"} 
+            else 
+              {days[i] ="weekday"}
+      }
+data1$weekday <- days
+weekmean <- aggregate(data1$steps ~ data1$interval + data1$weekday, FUN = "mean")
+names(weekmean) <- c("interval", "weekday", "steps")
+library(lattice)
+xyplot(steps~interval|weekday, data=weekmean, type="l", layout=c(1,2))
+```
